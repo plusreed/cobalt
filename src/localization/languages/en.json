@@ -49,6 +49,8 @@
         "SettingsServerUS": "united states",
         "SettingsServerEU": "europe",
         "SettingsServerCustom": "custom server",
+        "SettingsServerUsing": "using {s}",
+        "ErrorInvalidURL": "{s} is not a vaild url. make sure you copied it correctly!",
         "AccessibilityEnableDownloadPopup": "ask what to do with downloads",
         "SettingsQualityDescription": "if selected quality isn't available, closest one is used instead.",
         "LinkGitHubChanges": "&gt;&gt; see previous commits and contribute on github",
