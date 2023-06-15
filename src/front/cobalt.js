@@ -13,7 +13,7 @@ const switchers = {
     "dubLang": ["original", "auto"],
     "vimeoDash": ["false", "true"],
     "audioMode": ["false", "true"],
-    "server": ["auto", "us", "eu"]
+    "server": ["auto", "us", "eu", "custom"]
 };
 const checkboxes = ["disableTikTokWatermark", "fullTikTokAudio", "muteAudio"];
 const exceptions = { // used for mobile devices
