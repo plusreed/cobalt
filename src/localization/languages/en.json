@@ -48,6 +48,7 @@
         "SettingsServerAuto": "auto",
         "SettingsServerUS": "united states",
         "SettingsServerEU": "europe",
+        "SettingsServerCustom": "custom server",
         "AccessibilityEnableDownloadPopup": "ask what to do with downloads",
         "SettingsQualityDescription": "if selected quality isn't available, closest one is used instead.",
         "LinkGitHubChanges": "&gt;&gt; see previous commits and contribute on github",

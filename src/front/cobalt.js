@@ -460,6 +460,9 @@ function apiSetting() {
         case "eu":
             changeAPI(apiURL); // fixme: change to eu api
             break;
+        case "custom":
+            // fixme: change to custom api
+            break;
         default:
             changeAPI(apiURL);
     }

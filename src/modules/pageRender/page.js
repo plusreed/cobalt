@@ -336,6 +336,9 @@ export default function(obj) {
                         }, {
                             "action": "eu",
                             "text": t('SettingsServerEU')
+                        }, {
+                            "action": "custom",
+                            "text": t('SettingsServerCustom')
                         }]
                     })
                 })
