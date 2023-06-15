@@ -459,7 +459,18 @@ function apiSetting() {
             changeAPI(apiURL); // fixme: change to eu api
             break;
         case "custom":
-            // fixme: change to custom api
+            const customServer = sGet("customServer");
+            if (customServer) {
+                changeAPI(customServer);
+            } else {
+                let newServer = prompt('server URL', apiURL);
+                if (newServer) {
+                    sSet("customServer", newServer);
+                    changeAPI(newServer);
+                } else {
+                    changeAPI(apiURL);
+                }
+            }
             break;
         default:
             changeAPI(apiURL);
