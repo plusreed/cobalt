@@ -12,7 +12,8 @@ const switchers = {
     "aFormat": ["mp3", "best", "ogg", "wav", "opus"],
     "dubLang": ["original", "auto"],
     "vimeoDash": ["false", "true"],
-    "audioMode": ["false", "true"]
+    "audioMode": ["false", "true"],
+    "server": ["auto", "us", "eu"]
 };
 const checkboxes = ["disableTikTokWatermark", "fullTikTokAudio", "muteAudio"];
 const exceptions = { // used for mobile devices
@@ -236,6 +237,10 @@ function changeSwitcher(li, b) {
             (switchers[li][i] === b) ? enable(`${li}-${b}`) : disable(`${li}-${switchers[li][i]}`)
         }
         if (li === "theme") detectColorScheme();
+
+        if (li === "server") {
+            // todo: api change
+        }
     } else {
         let pref = switchers[li][0];
         if (isMobile && exceptions[li]) pref = exceptions[li];
@@ -442,9 +447,27 @@ async function loadOnDemand(elementId, blockId) {
 function restoreUpdateHistory() {
     eid("changelog-history").innerHTML = store.historyButton;
 }
+function apiSetting() {
+    const server = sGet("server");
+
+    switch (server) {
+        case "auto":
+            changeAPI(apiURL);
+            break;
+        case "us":
+            changeAPI(apiURL); // fixme: change to us api
+            break;
+        case "eu":
+            changeAPI(apiURL); // fixme: change to eu api
+            break;
+        default:
+            changeAPI(apiURL);
+    }
+}
 window.onload = () => {
     loadSettings();
     detectColorScheme();
+    apiSetting();
     changeDownloadButton(0, '>>');
     eid("cobalt-main-box").style.visibility = 'visible';
     eid("footer").style.visibility = 'visible';

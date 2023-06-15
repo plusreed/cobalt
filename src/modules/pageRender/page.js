@@ -321,6 +321,23 @@ export default function(obj) {
                     name: "miscellaneous",
                     title: t('Miscellaneous'),
                     body: checkbox("disableChangelog", t('SettingsDisableNotifications')) + `${!isIOS ? checkbox("downloadPopup", t('SettingsEnableDownloadPopup'), 1, t('AccessibilityEnableDownloadPopup')) : ''}`
+                }) + settingsCategory({
+                    name: "server",
+                    title: t('SettingsServerSubtitle'),
+                    body: switcher({
+                        name: "server",
+                        explanation: t('SettingsServerExplanation'),
+                        items: [{
+                            "action": "auto",
+                            "text": t('SettingsServerAuto')
+                        }, {
+                            "action": "us",
+                            "text": t('SettingsServerUS')
+                        }, {
+                            "action": "eu",
+                            "text": t('SettingsServerEU')
+                        }]
+                    })
                 })
             }],
         })}
