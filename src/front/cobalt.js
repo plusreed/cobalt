@@ -238,9 +238,7 @@ function changeSwitcher(li, b) {
         }
         if (li === "theme") detectColorScheme();
 
-        if (li === "server") {
-            // todo: api change
-        }
+        if (li === "server") apiSetting();
     } else {
         let pref = switchers[li][0];
         if (isMobile && exceptions[li]) pref = exceptions[li];
