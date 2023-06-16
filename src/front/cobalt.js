@@ -188,8 +188,8 @@ function popup(type, action, text) {
             case "picker":
                 switch (text.type) {
                     case "images":
-                        eid("picker-title").innerHTML = t.pickerImages;
-                        eid("picker-subtitle").innerHTML = t.pickerImagesExpl;
+                        eid("picker-title").innerHTML = loc.pickerImages;
+                        eid("picker-subtitle").innerHTML = loc.pickerImagesExpl;
                         if (!eid("popup-picker").classList.contains("scrollable")) eid("popup-picker").classList.add("scrollable");
                         if (eid("picker-holder").classList.contains("various")) eid("picker-holder").classList.remove("various");
                         eid("picker-download").href = text.audio;
@@ -199,8 +199,8 @@ function popup(type, action, text) {
                         }
                         break;
                     default:
-                        eid("picker-title").innerHTML = t.pickerDefault;
-                        eid("picker-subtitle").innerHTML = t.pickerDefaultExpl;
+                        eid("picker-title").innerHTML = loc.pickerDefault;
+                        eid("picker-subtitle").innerHTML = loc.pickerDefaultExpl;
                         if (eid("popup-picker").classList.contains("scrollable")) eid("popup-picker").classList.remove("scrollable");
                         if (!eid("picker-holder").classList.contains("various")) eid("picker-holder").classList.add("various");
                         for (let i in text.arr) {
@@ -251,7 +251,7 @@ function changeSwitcher(li, b) {
 function internetError() {
     eid("url-input-area").disabled = false
     changeDownloadButton(2, '!!');
-    popup("error", 1, t.noInternet);
+    popup("error", 1, loc.noInternet);
 }
 function checkbox(action) {
     sSet(action, !!eid(action).checked);
@@ -355,7 +355,7 @@ async function download(url) {
         if (j.text && (!j.url || !j.picker)) {
             if (j.status === "success") {
                 changeButton(2, j.text)
-            } else changeButton(0, t.noURLReturned);
+            } else changeButton(0, loc.noURLReturned);
         }
         switch (j.status) {
             case "redirect":
@@ -381,7 +381,7 @@ async function download(url) {
                     popup('picker', 1, { arr: j.picker, type: j.pickerType });
                     setTimeout(() => { changeButton(1) }, 2500);
                 } else {
-                    changeButton(0, t.noURLReturned);
+                    changeButton(0, loc.noURLReturned);
                 }
                 break;
             case "stream":
@@ -400,7 +400,7 @@ async function download(url) {
                 changeButton(2, j.text);
                 break;
             default:
-                changeButton(0, t.unknownStatus);
+                changeButton(0, loc.unknownStatus);
                 break;
         }
     } else if (j && j.text) {
@@ -435,7 +435,7 @@ async function loadOnDemand(elementId, blockId) {
             }).catch(() => { throw new Error() });
         }
         if (j.text) {
-            eid(elementId).innerHTML = `<button class="switch bottom-margin" onclick="restoreUpdateHistory()">${t.collapseHistory}</button>${j.text}`;
+            eid(elementId).innerHTML = `<button class="switch bottom-margin" onclick="restoreUpdateHistory()">${loc.collapseHistory}</button>${j.text}`;
         } else throw new Error()
     } catch (e) {
         eid(elementId).innerHTML = store.historyButton;
