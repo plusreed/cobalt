@@ -340,7 +340,7 @@ export default function(obj) {
                             "action": "custom",
                             "text": t('SettingsServerCustom')
                         }]
-                    })
+                    }) + `<p id="custom-server-text-thing"></p>`
                 })
             }],
         })}
@@ -440,6 +440,8 @@ export default function(obj) {
         pickerImages: ` + "`" + t('ImagePickerTitle') + "`" + `,
         pickerImagesExpl: ` + "`" + t(`ImagePickerExplanation${isMobile ? "Phone" : "PC"}`) + "`" + `,
         pickerDefaultExpl: ` + "`" + t(`MediaPickerExplanation${isMobile ? `Phone${isIOS ? "IOS" : ""}` : "PC"}`) + "`" + `,
+        errorInvalidURL: ` + "`" + t('ErrorInvalidURL') + "`" + `,
+        settingsServerUsing: ` + "`" + t('SettingsServerUsing') + "`" + `,
     };
     let apiURL = '${process.env.apiURL ? process.env.apiURL.slice(0, -1) : ''}';
     </script>

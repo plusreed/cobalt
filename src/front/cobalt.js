@@ -188,8 +188,8 @@ function popup(type, action, text) {
             case "picker":
                 switch (text.type) {
                     case "images":
-                        eid("picker-title").innerHTML = loc.pickerImages;
-                        eid("picker-subtitle").innerHTML = loc.pickerImagesExpl;
+                        eid("picker-title").innerHTML = t.pickerImages;
+                        eid("picker-subtitle").innerHTML = t.pickerImagesExpl;
                         if (!eid("popup-picker").classList.contains("scrollable")) eid("popup-picker").classList.add("scrollable");
                         if (eid("picker-holder").classList.contains("various")) eid("picker-holder").classList.remove("various");
                         eid("picker-download").href = text.audio;
@@ -199,8 +199,8 @@ function popup(type, action, text) {
                         }
                         break;
                     default:
-                        eid("picker-title").innerHTML = loc.pickerDefault;
-                        eid("picker-subtitle").innerHTML = loc.pickerDefaultExpl;
+                        eid("picker-title").innerHTML = t.pickerDefault;
+                        eid("picker-subtitle").innerHTML = t.pickerDefaultExpl;
                         if (eid("popup-picker").classList.contains("scrollable")) eid("popup-picker").classList.remove("scrollable");
                         if (!eid("picker-holder").classList.contains("various")) eid("picker-holder").classList.add("various");
                         for (let i in text.arr) {
@@ -251,7 +251,7 @@ function changeSwitcher(li, b) {
 function internetError() {
     eid("url-input-area").disabled = false
     changeDownloadButton(2, '!!');
-    popup("error", 1, loc.noInternet);
+    popup("error", 1, t.noInternet);
 }
 function checkbox(action) {
     sSet(action, !!eid(action).checked);
@@ -355,7 +355,7 @@ async function download(url) {
         if (j.text && (!j.url || !j.picker)) {
             if (j.status === "success") {
                 changeButton(2, j.text)
-            } else changeButton(0, loc.noURLReturned);
+            } else changeButton(0, t.noURLReturned);
         }
         switch (j.status) {
             case "redirect":
@@ -381,7 +381,7 @@ async function download(url) {
                     popup('picker', 1, { arr: j.picker, type: j.pickerType });
                     setTimeout(() => { changeButton(1) }, 2500);
                 } else {
-                    changeButton(0, loc.noURLReturned);
+                    changeButton(0, t.noURLReturned);
                 }
                 break;
             case "stream":
@@ -400,7 +400,7 @@ async function download(url) {
                 changeButton(2, j.text);
                 break;
             default:
-                changeButton(0, loc.unknownStatus);
+                changeButton(0, t.unknownStatus);
                 break;
         }
     } else if (j && j.text) {
@@ -435,7 +435,7 @@ async function loadOnDemand(elementId, blockId) {
             }).catch(() => { throw new Error() });
         }
         if (j.text) {
-            eid(elementId).innerHTML = `<button class="switch bottom-margin" onclick="restoreUpdateHistory()">${loc.collapseHistory}</button>${j.text}`;
+            eid(elementId).innerHTML = `<button class="switch bottom-margin" onclick="restoreUpdateHistory()">${t.collapseHistory}</button>${j.text}`;
         } else throw new Error()
     } catch (e) {
         eid(elementId).innerHTML = store.historyButton;
@@ -445,8 +445,17 @@ async function loadOnDemand(elementId, blockId) {
 function restoreUpdateHistory() {
     eid("changelog-history").innerHTML = store.historyButton;
 }
+function isValidUrl(string) {
+    try {
+        new URL(string);
+    } catch (_) {
+        return false;
+    }
+    return true;
+}
 function apiSetting() {
     const server = sGet("server");
+    const p = eid('custom-server-text-thing')
 
     switch (server) {
         case "auto":
@@ -464,16 +473,47 @@ function apiSetting() {
                 changeAPI(customServer);
             } else {
                 let newServer = prompt('server URL', apiURL);
-                if (newServer) {
+                if (newServer && isValidUrl(newServer)) {
                     sSet("customServer", newServer);
+                    p.innerText = t('settingsServerUsing', newServer);
                     changeAPI(newServer);
                 } else {
+                    sSet("server", "auto");
+                    p.innerText = t('errorInvalidURL', apiURL);
                     changeAPI(apiURL);
+                    return
                 }
             }
             break;
         default:
             changeAPI(apiURL);
+    }
+
+    p.innerText = t('settingsServerUsing', apiURL);
+}
+// todo: i implemented a very basic version of this from src/localization/manager.js
+// might need to be extended?
+function replaceBase(s) {
+    return s.replace(/\n/g, '<br/>')
+        .replace(/\*;/g, "&bull;");
+}
+// todo: this is a very basic version of replaceAll from src/localization/manager.js
+// it doesn't support substrings rn because that's not in the current loc object
+function replaceAll(string, replacement) {
+    let s = replaceBase(string)
+
+    if (replacement) {
+        s = s.replace(/{s}/g, replacement)
+    }
+
+    return s;
+}
+function t(string, replacement) {
+    try {
+        let str = loc[string];
+        return replaceAll(str, replacement);
+    } catch (e) {
+        return `!!${string}!!`
     }
 }
 window.onload = () => {
