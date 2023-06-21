@@ -1,6 +1,5 @@
 import cors from "@fastify/cors";
-import rateLimit from '@fastify/rate-limit'
-import rateLimit from "express-rate-limit";
+import rateLimit from "@fastify/rate-limit"
 import { randomBytes } from "crypto";
 
 const ipSalt = randomBytes(64).toString('hex');
