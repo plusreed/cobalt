@@ -93,7 +93,7 @@ export function verifyLanguageCode(code) {
     return RegExp(/[a-z]{2}/).test(String(code.slice(0, 2).toLowerCase())) ? String(code.slice(0, 2).toLowerCase()) : "en"
 }
 export function languageCode(req) {
-    return req.header('Accept-Language') ? verifyLanguageCode(req.header('Accept-Language')) : "en"
+    return req.headers['Accept-Language'] ? verifyLanguageCode(req.headers['Accept-Language']) : "en"
 }
 export function unicodeDecode(str) {
     return str.replace(/\\u[\dA-F]{4}/gi, (unicode) => {
@@ -140,7 +140,7 @@ export function checkJSONPost(obj) {
     }
 }
 export function getIP(req) {
-    return req.header('cf-connecting-ip') ? req.header('cf-connecting-ip') : req.ip;
+    return req.headers['cf-connecting-ip'] ? req.headers['cf-connecting-ip'] : req.ip;
 }
 export function getThreads() {
     try {

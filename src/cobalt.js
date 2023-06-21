@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import express from "express";
+import fastify from 'fastify'
 
 import { Bright, Green, Red } from "./modules/sub/consoleText.js";
 import { getCurrentBranch, shortCommit } from "./modules/sub/currentCommit.js";
@@ -13,7 +14,7 @@ import { runWeb } from "./core/web.js";
 import { runAPI } from "./core/api.js";
 import { runBoth } from "./core/both.js";
 
-const app = express();
+const app = fastify();
 
 const gitCommit = shortCommit();
 const gitBranch = getCurrentBranch();
@@ -21,7 +22,12 @@ const gitBranch = getCurrentBranch();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename).slice(0, -4); // go up another level (get rid of src/)
 
-app.disable('x-powered-by');
+// Fastify does not have a built-in way to hide x-powered-by I think?
+// this is the easiest solution I think
+app.addHook('onSend', (req, res, next) => {
+    res.removeHeader('x-powered-by');
+    next();
+})
 
 await loadLoc(); // preload localization
 

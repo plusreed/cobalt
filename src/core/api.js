@@ -1,4 +1,5 @@
-import cors from "cors";
+import cors from "@fastify/cors";
+import rateLimit from '@fastify/rate-limit'
 import rateLimit from "express-rate-limit";
 import { randomBytes } from "crypto";
 
@@ -15,6 +16,205 @@ import { sha256 } from "../modules/sub/crypto.js";
 import { celebrationsEmoji } from "../modules/pageRender/elements.js";
 import { verifyStream } from "../modules/stream/manage.js";
 
+export function runAPI(fastify, app, gitCommit, gitBranch, __dirname) {
+    const corsConfig = process.env.cors === '0' ? { origin: process.env.webURL, optionsSuccessStatus: 200 } : {};
+
+    // TODO: at the moment, this puts the rate limit headers on the response
+    // old express impl explicitly disabled this
+    app.register(rateLimit, {
+        global: false, // this is a per-route rate limiter
+        keyGenerator: (req) => sha256(getIP(req), ipSalt),
+
+        // TODO: figure out if this responds correctly when the limit is hit
+        errorResponseBuilder: (req, context) => {
+            context.statusCode = 429;
+            return {
+                status: 'error',
+                text: loc(languageCode(req), 'ErrorRateLimit')
+            }
+        }
+    })
+
+    // TODO: Express impl registers this specifically on /api/:type
+    app.register(cors, corsConfig);
+
+    const startTime = new Date();
+    const startTimestamp = Math.floor(startTime.getTime());
+
+    // TODO: express.json() on /api/json implementation
+    /*
+    try {
+        JSON.parse(buf);
+        if (buf.length > 720) throw new Error();
+        if (String(req.header('Content-Type')) !== "application/json") {
+            res.status(400).json({ 'status': 'error', 'text': 'invalid content type header' });
+            return;
+        }
+        if (String(req.header('Accept')) !== "application/json") {
+            res.status(400).json({ 'status': 'error', 'text': 'invalid accept header' });
+            return;
+        }
+    } catch(e) {
+        res.status(400).json({ 'status': 'error', 'text': 'invalid json body.' });
+        return;
+    }
+    */
+    app.route({
+        method: 'POST',
+        url: '/api/json',
+        config: {
+            rateLimit: {
+                max: 25,
+            }
+        },
+        bodyLimit: 720, // TODO: is this right?
+        preHandler: async (request, reply) => {
+            // Content-Type header must be application/json
+            if (String(request.headers['content-type']) !== "application/json") {
+                reply.code(400).send({ 'status': 'error', 'text': 'invalid content type header' });
+                return;
+            }
+
+            if (String(request.headers['accept']) !== "application/json") {
+                reply.code(400).send({ 'status': 'error', 'text': 'invalid accept header' });
+                return;
+            }
+
+            // TODO: express implementation would send an error on an invalid json body
+        },
+        handler: async (request, reply) => {
+            try {
+                let ip = sha256(getIP(request), ipSalt);
+                let lang = languageCode(request);
+                let j = apiJSON(0, { t: "Bad request" });
+                try {
+                    let _request = request.body;
+                    if (_request.url) {
+                        _request.dubLang = _request.dubLang ? lang : false;
+                        let chck = checkJSONPost(_request);
+                        if (chck) chck["ip"] = ip;
+                        j = chck ? await getJSON(chck["url"], lang, chck) : apiJSON(0, { t: loc(lang, 'ErrorCouldntFetch') });
+                    } else {
+                        j = apiJSON(0, { t: loc(lang, 'ErrorNoLink') });
+                    }
+                } catch (e) {
+                    j = apiJSON(0, { t: loc(lang, 'ErrorCantProcess') });
+                }
+                reply.code(j.status).send(j.body);
+                return;
+            } catch (e) {
+                // TODO: is this even the right way to do this LOL
+                reply.hijack();
+                reply.raw.destroy();
+                return
+            }
+        }
+    })
+
+    app.route({
+        method: 'GET',
+        url: '/api/onDemand',
+        config: {
+            rateLimit: {
+                max: 25,
+            }
+        },
+        handler: async (request, reply) => {
+            if (request.query.blockId) {
+                let blockId = request.query.blockId.slice(0, 3);
+                let r, j;
+                switch(blockId) {
+                    case "0": // changelog history
+                        r = changelogHistory();
+                        j = r ? apiJSON(3, { t: r }) : apiJSON(0, { t: "couldn't render this block" })
+                        break;
+                    case "1": // celebrations emoji
+                        r = celebrationsEmoji();
+                        j = r ? apiJSON(3, { t: r }) : false
+                        break;
+                    default:
+                        j = apiJSON(0, { t: "couldn't find a block with this id" })
+                        break;
+                }
+                if (j.body) {
+                    reply.code(j.status).send(j.body)
+                } else {
+                    reply.code(204).end()
+                }
+            } else {
+                let j = apiJSON(0, { t: "no block id" });
+                reply.code(j.status).send(j.body)
+            }
+        }
+    })
+
+    // TODO: at this point it's probably best to just make this a wildcard with only the default branch in switch
+    app.route({
+        method: 'GET',
+        url: '/api/:type',
+        handler: async (request, reply) => {
+            try {
+                switch (request.params.type) {
+                    case 'serverInfo':
+                        reply.code(200).send({
+                            version: version,
+                            commit: gitCommit,
+                            branch: gitBranch,
+                            name: process.env.apiName ? process.env.apiName : "unknown",
+                            url: process.env.apiURL,
+                            cors: process.env.cors && process.env.cors === "0" ? 0 : 1,
+                            startTime: `${startTimestamp}`
+                        });
+                        break;
+                    default:
+                        let j = apiJSON(0, { t: "unknown response type" })
+                        reply.code(j.status).send(j.body);
+                        break;
+                }
+            } catch (e) {
+                reply.code(500).send({ 'status': 'error', 'text': loc(languageCode(req), 'ErrorCantProcess') });
+                return;
+            }
+        }
+    })
+
+    app.route({
+        method: 'POST',
+        url: '/api/stream',
+        config: {
+            rateLimit: {
+                max: 28,
+            }
+        },
+        handler: async (request, reply) => {
+            let ip = sha256(getIP(request), ipSalt);
+            let streamInfo = verifyStream(ip, request.query.t, request.query.h, request.query.e);
+            if (streamInfo.error) {
+                reply.code(streamInfo.status).send(apiJSON(0, { t: streamInfo.error }).body)
+                return;
+            }
+    
+            if (request.query.p) {
+                reply.code(200).send({ "status": "continue" });
+                return;
+            } else if (request.query.t && request.query.h && request.query.e) {
+                stream(reply, ip, request.query.t, request.query.h, request.query.e);
+            } else {
+                let j = apiJSON(0, { t: "no stream id" })
+                res.code(j.status).send(j.body);
+                return;
+            }
+        }
+    })
+
+    app.listen({ port: process.env.apiPort }, (err, address) => {
+        if (err) throw err
+
+        console.log(`\n${Cyan(appName)} API ${Bright(`v.${version}-${gitCommit} (${gitBranch})`)}\nStart time: ${Bright(`${startTime.toUTCString()} (${startTimestamp})`)}\n\nURL: ${Cyan(`${process.env.apiURL}`)}\nPort: ${process.env.apiPort}\n`)
+    })
+}
+
+/*
 export function runAPI(express, app, gitCommit, gitBranch, __dirname) {
     const corsConfig = process.env.cors === '0' ? { origin: process.env.webURL, optionsSuccessStatus: 200 } : {};
 
@@ -183,3 +383,4 @@ export function runAPI(express, app, gitCommit, gitBranch, __dirname) {
         console.log(`\n${Cyan(appName)} API ${Bright(`v.${version}-${gitCommit} (${gitBranch})`)}\nStart time: ${Bright(`${startTime.toUTCString()} (${startTimestamp})`)}\n\nURL: ${Cyan(`${process.env.apiURL}`)}\nPort: ${process.env.apiPort}\n`)
     });
 }
+*/
