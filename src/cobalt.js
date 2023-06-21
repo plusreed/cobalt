@@ -1,7 +1,6 @@
 import "dotenv/config";
 
-import express from "express";
-import fastify from 'fastify'
+import fastify from "fastify";
 
 import { Bright, Green, Red } from "./modules/sub/consoleText.js";
 import { getCurrentBranch, shortCommit } from "./modules/sub/currentCommit.js";
@@ -33,7 +32,7 @@ await loadLoc(); // preload localization
 
 // i don't like this at all
 if (process.env.apiURL && process.env.apiPort && !((process.env.webURL && process.env.webPort) || (process.env.selfURL && process.env.port))) {
-    await runAPI(express, app, gitCommit, gitBranch, __dirname);
+    await runAPI(app, gitCommit, gitBranch, __dirname);
 } else if (process.env.webURL && process.env.webPort && !((process.env.apiURL && process.env.apiPort) || (process.env.selfURL && process.env.port))) {
     await runWeb(express, app, gitCommit, gitBranch, __dirname);
 } else if (process.env.selfURL && process.env.port && !((process.env.apiURL && process.env.apiPort) || (process.env.webURL && process.env.webPort))) {

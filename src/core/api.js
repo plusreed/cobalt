@@ -16,7 +16,7 @@ import { sha256 } from "../modules/sub/crypto.js";
 import { celebrationsEmoji } from "../modules/pageRender/elements.js";
 import { verifyStream } from "../modules/stream/manage.js";
 
-export function runAPI(fastify, app, gitCommit, gitBranch, __dirname) {
+export async function runAPI(app, gitCommit, gitBranch, __dirname) {
     const corsConfig = process.env.cors === '0' ? { origin: process.env.webURL, optionsSuccessStatus: 200 } : {};
 
     // TODO: at the moment, this puts the rate limit headers on the response
