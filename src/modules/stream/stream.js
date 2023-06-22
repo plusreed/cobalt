@@ -6,7 +6,7 @@ export default function(res, ip, id, hmac, exp) {
     try {
         let streamInfo = verifyStream(ip, id, hmac, exp);
         if (streamInfo.error) {
-            res.status(streamInfo.status).json(apiJSON(0, { t: streamInfo.error }).body);
+            res.code(streamInfo.status).send(apiJSON(0, { t: streamInfo.error }).body);
             return;
         }
         if (streamInfo.isAudioOnly && streamInfo.type !== "bridge") {
@@ -26,6 +26,6 @@ export default function(res, ip, id, hmac, exp) {
                 break;
         }
     } catch (e) {
-        res.status(500).json({ status: "error", text: "Internal Server Error" });
+        res.code(500).send({ status: "error", text: "Internal Server Error" });
     }
 }

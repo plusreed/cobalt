@@ -22,6 +22,7 @@ export async function runAPI(app, gitCommit, gitBranch, __dirname) {
     // old express impl explicitly disabled this
     app.register(rateLimit, {
         global: false, // this is a per-route rate limiter
+        max: 25,
         keyGenerator: (req) => sha256(getIP(req), ipSalt),
 
         // TODO: figure out if this responds correctly when the limit is hit
@@ -147,6 +148,35 @@ export async function runAPI(app, gitCommit, gitBranch, __dirname) {
         }
     })
 
+    app.route({
+        method: 'GET',
+        url: '/api/stream',
+        config: {
+            rateLimit: {
+                max: 28,
+            }
+        },
+        handler: async (request, reply) => {
+            let ip = sha256(getIP(request), ipSalt);
+            let streamInfo = verifyStream(ip, request.query.t, request.query.h, request.query.e);
+            if (streamInfo.error) {
+                reply.code(streamInfo.status).send(apiJSON(0, { t: streamInfo.error }).body)
+                return;
+            }
+    
+            if (request.query.p) {
+                reply.code(200).send({ "status": "continue" });
+                return;
+            } else if (request.query.t && request.query.h && request.query.e) {
+                stream(reply, ip, request.query.t, request.query.h, request.query.e);
+            } else {
+                let j = apiJSON(0, { t: "no stream id" })
+                res.code(j.status).send(j.body);
+                return;
+            }
+        }
+    })
+
     // TODO: at this point it's probably best to just make this a wildcard with only the default branch in switch
     app.route({
         method: 'GET',
@@ -178,31 +208,10 @@ export async function runAPI(app, gitCommit, gitBranch, __dirname) {
     })
 
     app.route({
-        method: 'POST',
-        url: '/api/stream',
-        config: {
-            rateLimit: {
-                max: 28,
-            }
-        },
+        method: 'GET',
+        url: '/*',
         handler: async (request, reply) => {
-            let ip = sha256(getIP(request), ipSalt);
-            let streamInfo = verifyStream(ip, request.query.t, request.query.h, request.query.e);
-            if (streamInfo.error) {
-                reply.code(streamInfo.status).send(apiJSON(0, { t: streamInfo.error }).body)
-                return;
-            }
-    
-            if (request.query.p) {
-                reply.code(200).send({ "status": "continue" });
-                return;
-            } else if (request.query.t && request.query.h && request.query.e) {
-                stream(reply, ip, request.query.t, request.query.h, request.query.e);
-            } else {
-                let j = apiJSON(0, { t: "no stream id" })
-                res.code(j.status).send(j.body);
-                return;
-            }
+            reply.redirect('/api/json');
         }
     })
 
