@@ -15,17 +15,17 @@ export function streamDefault(streamInfo, res) {
             },
             isStream: true
         });
-        stream.pipe(res).on('error', () => {
-            res.destroy();
+        stream.pipe(res.raw).on('error', () => {
+            res.raw.destroy();
         });
         stream.on('error', () => {
-            res.destroy();
+            res.raw.destroy();
         });
         stream.on('aborted', () => {
-            res.destroy();
+            res.raw.destroy();
         });
     } catch (e) {
-        res.destroy();
+        res.raw.destroy();
     }
 }
 export function streamLiveRender(streamInfo, res) {
@@ -59,22 +59,22 @@ export function streamLiveRender(streamInfo, res) {
             ffmpegProcess.kill();
             res.raw.destroy();
         });
-        ffmpegProcess.stdio[4].pipe(res).on('error', () => {
+        ffmpegProcess.stdio[4].pipe(res.raw).on('error', (e) => {
             ffmpegProcess.kill();
             res.raw.destroy();
         });
-        audio.pipe(ffmpegProcess.stdio[3]).on('error', () => {
+        audio.pipe(ffmpegProcess.stdio[3]).on('error', (e) => {
             ffmpegProcess.kill();
             res.raw.destroy();
         });
         
-        audio.on('error', () => {
+        audio.on('error', (e) => {
             ffmpegProcess.kill();
-            res.destroy();
+            res.raw.destroy();
         });
         audio.on('aborted', () => {
             ffmpegProcess.kill();
-            res.destroy();
+            res.raw.destroy();
         });
 
         ffmpegProcess.on('disconnect', () => ffmpegProcess.kill());
@@ -82,7 +82,7 @@ export function streamLiveRender(streamInfo, res) {
         ffmpegProcess.on('exit', () => ffmpegProcess.kill());
         res.raw.on('finish', () => ffmpegProcess.kill());
         res.raw.on('close', () => ffmpegProcess.kill());
-        ffmpegProcess.on('error', () => {
+        ffmpegProcess.on('error', (e) => {
             ffmpegProcess.kill();
             res.raw.destroy();
         });
@@ -123,14 +123,14 @@ export function streamAudioOnly(streamInfo, res) {
         });
         res.header('Connection', 'keep-alive');
         res.header('Content-Disposition', `attachment; filename="${streamInfo.filename}.${streamInfo.audioFormat}"`);
-        ffmpegProcess.stdio[3].pipe(res);
+        ffmpegProcess.stdio[3].pipe(res.raw);
 
         ffmpegProcess.on('disconnect', () => ffmpegProcess.kill());
         ffmpegProcess.on('close', () => ffmpegProcess.kill());
         ffmpegProcess.on('exit', () => ffmpegProcess.kill());
         res.raw.on('finish', () => ffmpegProcess.kill());
         res.raw.on('close', () => ffmpegProcess.kill());
-        ffmpegProcess.on('error', () => {
+        ffmpegProcess.on('error', (e) => {
             ffmpegProcess.kill();
             res.raw.destroy();
         });
@@ -159,14 +159,14 @@ export function streamVideoOnly(streamInfo, res) {
         });
         res.header('Connection', 'keep-alive');
         res.header('Content-Disposition', `attachment; filename="${streamInfo.filename.split('.')[0]}${streamInfo.mute ? '_mute' : ''}.${format}"`);
-        ffmpegProcess.stdio[3].pipe(res);
+        ffmpegProcess.stdio[3].pipe(res.raw);
 
         ffmpegProcess.on('disconnect', () => ffmpegProcess.kill());
         ffmpegProcess.on('close', () => ffmpegProcess.kill());
         ffmpegProcess.on('exit', () => ffmpegProcess.kill());
         res.raw.on('finish', () => ffmpegProcess.kill());
         res.raw.on('close', () => ffmpegProcess.kill());
-        ffmpegProcess.on('error', () => {
+        ffmpegProcess.on('error', (e) => {
             ffmpegProcess.kill();
             res.raw.destroy();
         });
