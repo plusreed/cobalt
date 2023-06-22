@@ -38,6 +38,11 @@ export async function runAPI(app, gitCommit, gitBranch, __dirname) {
     // TODO: Express impl registers this specifically on /api/:type
     app.register(cors, corsConfig);
 
+    app.addHook('preHandler', (req, res, done) => {
+        try { decodeURIComponent(req.path) } catch (e) { return res.redirect('/') }
+        done();
+    })
+
     const startTime = new Date();
     const startTimestamp = Math.floor(startTime.getTime());
 
