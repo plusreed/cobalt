@@ -3,11 +3,72 @@ import { languageCode } from "../modules/sub/utils.js";
 import { Bright, Cyan } from "../modules/sub/consoleText.js";
 import { buildFront } from "../modules/build.js";
 import findRendered from "../modules/pageRender/findRendered.js";
+import fs from 'fs'
 
 // * will be removed in the future
 import cors from "cors";
 // *
 
+export async function runWeb(app, gitCommit, gitBranch, __dirname) {
+    await buildFront(gitCommit, gitBranch);
+
+    app.register(require('@fastify/static'), {
+        root: './build/min',
+        prefix: '/'
+    })
+
+    app.register(require('@fastify/static'), {
+        root: './src/front',
+        prefix: '/'
+    })
+
+    app.addHook('preHandler', (req, res, done) => {
+        try { decodeURIComponent(req.path) } catch (e) { return res.redirect('/') }
+        done();
+    })
+
+    app.route({
+        method: 'GET',
+        url: '/status',
+        handler: (request, reply) => {
+            reply.status(200).send()
+        }
+    })
+
+    app.route({
+        method: 'GET',
+        url: '/',
+        handler: (request, reply) => {
+            const file = `${__dirname}/${findRendered(languageCode(request), request.headers['user-agent'] ? request.headers['user-agent'] : genericUserAgent)}`;
+            const stream = fs.createReadStream(file)
+            reply.type('text/html').send(stream)
+        }
+    })
+
+    app.route({
+        method: 'GET',
+        url: '/favicon.ico',
+        handler: (request, reply) => {
+            const file = `${__dirname}/src/front/icons/favicon.ico`;
+            const stream = fs.createReadStream(file)
+            reply.type('image/x-icon').send(stream)
+        }
+    })
+
+    app.route({
+        method: 'GET',
+        url: '/*',
+        handler: (request, reply) => {
+            reply.redirect(308, '/')
+        }
+    })
+
+    app.listen({ port: process.env.webPort }, (err, address) => {
+        if (err) throw err
+        console.log(`\n${Cyan(appName)} WEB ${Bright(`v.${version}-${gitCommit} (${gitBranch})`)}\nStart time: ${Bright(`${startTime.toUTCString()} (${Math.floor(new Date().getTime())})`)}\n\nURL: ${Cyan(`${process.env.webURL}`)}\nPort: ${process.env.webPort}\n`)
+    })
+}
+/*
 export async function runWeb(express, app, gitCommit, gitBranch, __dirname) {
     await buildFront(gitCommit, gitBranch);
 
@@ -49,3 +110,4 @@ export async function runWeb(express, app, gitCommit, gitBranch, __dirname) {
         console.log(`\n${Cyan(appName)} WEB ${Bright(`v.${version}-${gitCommit} (${gitBranch})`)}\nStart time: ${Bright(`${startTime.toUTCString()} (${Math.floor(new Date().getTime())})`)}\n\nURL: ${Cyan(`${process.env.webURL}`)}\nPort: ${process.env.webPort}\n`)
     })
 }
+*/
