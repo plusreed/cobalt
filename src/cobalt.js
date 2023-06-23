@@ -21,8 +21,7 @@ const gitBranch = getCurrentBranch();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename).slice(0, -4); // go up another level (get rid of src/)
 
-// Fastify does not have a built-in way to hide x-powered-by I think?
-// this is the easiest solution I think
+// remove x-powered-by header
 app.addHook('onSend', (req, res, payload, next) => {
     res.removeHeader('x-powered-by');
     next();
