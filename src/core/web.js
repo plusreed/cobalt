@@ -39,9 +39,7 @@ export async function runWeb(app, gitCommit, gitBranch, __dirname) {
         method: 'GET',
         url: '/',
         handler: (request, reply) => {
-            const file = `${__dirname}/${findRendered(languageCode(request), request.headers['user-agent'] ? request.headers['user-agent'] : genericUserAgent)}`;
-            const stream = fs.createReadStream(file)
-            reply.type('text/html').send(stream)
+            reply.sendFile(`${__dirname}/${findRendered(languageCode(req), req.header('user-agent') ? req.header('user-agent') : genericUserAgent)}`)
         }
     })
 
@@ -49,9 +47,7 @@ export async function runWeb(app, gitCommit, gitBranch, __dirname) {
         method: 'GET',
         url: '/favicon.ico',
         handler: (request, reply) => {
-            const file = `${__dirname}/src/front/icons/favicon.ico`;
-            const stream = fs.createReadStream(file)
-            reply.type('image/x-icon').send(stream)
+            reply.sendFile(`${__dirname}/src/front/icons/favicon.ico`)
         }
     })
 
