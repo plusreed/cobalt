@@ -15,16 +15,20 @@ export function streamDefault(streamInfo, res) {
             },
             isStream: true
         });
-        stream.pipe(res.raw).on('error', () => {
+        stream.pipe(res.raw).on('error', (e) => {
+            console.error('streamDefault: error on pipe!', e)
             res.raw.destroy();
         });
-        stream.on('error', () => {
+        stream.on('error', (e) => {
+            console.error('streamDefault: error on stream', e)
             res.raw.destroy();
         });
-        stream.on('aborted', () => {
+        stream.on('aborted', (e) => {
+            console.error('streamDefault: stream aborted!', e)
             res.raw.destroy();
         });
     } catch (e) {
+        console.log('streamDefault: general exception', e)
         res.raw.destroy();
     }
 }
