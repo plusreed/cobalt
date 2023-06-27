@@ -1,14 +1,7 @@
-import { apiJSON } from "../sub/utils.js";
-import { verifyStream } from "./manage.js";
 import { streamAudioOnly, streamDefault, streamLiveRender, streamVideoOnly } from "./types.js";
 
-export default function(res, ip, id, hmac, exp) {
+export default async function(res, streamInfo) {
     try {
-        let streamInfo = verifyStream(ip, id, hmac, exp);
-        if (streamInfo.error) {
-            res.code(streamInfo.status).send(apiJSON(0, { t: streamInfo.error }).body);
-            return;
-        }
         if (streamInfo.isAudioOnly && streamInfo.type !== "bridge") {
             streamAudioOnly(streamInfo, res);
             return;
