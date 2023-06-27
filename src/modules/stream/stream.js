@@ -1,6 +1,6 @@
 import { streamAudioOnly, streamDefault, streamLiveRender, streamVideoOnly } from "./types.js";
 
-export default function(res, streamInfo) {
+export default async function(res, streamInfo) {
     try {
         if (streamInfo.isAudioOnly && streamInfo.type !== "bridge") {
             streamAudioOnly(streamInfo, res);

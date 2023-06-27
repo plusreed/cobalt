@@ -43,17 +43,15 @@ export function createStream(obj) {
 
 export function verifyStream(id, hmac, exp) {
     try {
-        if (id.toString().length === 21) {
-            let streamInfo = streamCache.get(id.toString());
-            if (!streamInfo) return { error: "requested stream does not exist", status: 400 };
-    
-            let ghmac = sha256(`${id},${ip},${streamInfo.service},${exp}`, streamSalt);
-            if (String(hmac) === ghmac && String(exp) === String(streamInfo.exp) && ghmac === String(streamInfo.hmac)
-                && String(ip) === streamInfo.ip && Number(exp) > Math.floor(new Date().getTime())) {
-                return streamInfo;
-            }
+        let streamInfo = streamCache.get(id.toString());
+        if (!streamInfo) return { error: "this download link has expired or doesn't exist. go back and try again!", status: 400 };
+
+        let ghmac = sha256(`${id},${streamInfo.service},${exp}`, streamSalt);
+        if (String(hmac) === ghmac && String(exp) === String(streamInfo.exp) && ghmac === String(streamInfo.hmac)
+            && Number(exp) > Math.floor(new Date().getTime())) {
+            return streamInfo;
         }
-        return { error: "i couldn't verify whether you have access to this download. try again or refresh the page!", status: 401 };
+        return { error: "i couldn't verify if you have access to this download. go back and try again!", status: 401 };
     } catch (e) {
         return { status: 500, body: { status: "error", text: "Internal Server Error" } };
     }
