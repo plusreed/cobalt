@@ -27,6 +27,10 @@ app.addHook('onSend', (req, res, payload, next) => {
     next();
 })
 
+app.addContentTypeParser('*', (req, done) => {
+    done();
+})
+
 await loadLoc(); // preload localization
 
 // i don't like this at all

@@ -59,24 +59,29 @@ export function streamLiveRender(streamInfo, res) {
         });
         res.header('Connection', 'keep-alive');
         res.header('Content-Disposition', `attachment; filename="${streamInfo.filename}"`);
-        res.raw.on('error', () => {
+        res.raw.on('error', (e) => {
+            console.error('streamLiveRender: error on res.raw', e)
             ffmpegProcess.kill();
             res.raw.destroy();
         });
         ffmpegProcess.stdio[4].pipe(res.raw).on('error', (e) => {
+            console.error('streamLiveRender: error on pipe', e)
             ffmpegProcess.kill();
             res.raw.destroy();
         });
         audio.pipe(ffmpegProcess.stdio[3]).on('error', (e) => {
+            console.error('streamLiveRender: error on audio pipe', e)
             ffmpegProcess.kill();
             res.raw.destroy();
         });
         
         audio.on('error', (e) => {
+            console.error('streamLiveRender: error on audio', e)
             ffmpegProcess.kill();
             res.raw.destroy();
         });
-        audio.on('aborted', () => {
+        audio.on('aborted', (e) => {
+            console.error('streamLiveRender: audio aborted!', e)
             ffmpegProcess.kill();
             res.raw.destroy();
         });
@@ -87,11 +92,13 @@ export function streamLiveRender(streamInfo, res) {
         res.raw.on('finish', () => ffmpegProcess.kill());
         res.raw.on('close', () => ffmpegProcess.kill());
         ffmpegProcess.on('error', (e) => {
+            console.error('streamLiveRender: error on ffmpegProcess', e)
             ffmpegProcess.kill();
             res.raw.destroy();
         });
 
     } catch (e) {
+        console.log('streamLiveRender: general exception', e)
         res.raw.destroy();
     }
 }
