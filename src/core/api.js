@@ -109,7 +109,6 @@ export async function runAPI(app, gitCommit, gitBranch, __dirname) {
                 return;
             } catch (e) {
                 // TODO: is this even the right way to do this LOL
-                reply.hijack();
                 reply.raw.destroy();
                 return
             }
@@ -162,23 +161,24 @@ export async function runAPI(app, gitCommit, gitBranch, __dirname) {
             }
         },
         handler: async (request, reply) => {
-            let ip = sha256(getIP(request), ipSalt);
-            let streamInfo = verifyStream(ip, request.query.t, request.query.h, request.query.e);
-            if (streamInfo.error) {
-                reply.code(streamInfo.status).send(apiJSON(0, { t: streamInfo.error }).body)
-                return;
-            }
-    
-            if (request.query.p) {
-                reply.code(200).send({ "status": "continue" });
-                return;
-            } else if (request.query.t && request.query.h && request.query.e) {
-                stream(reply, ip, request.query.t, request.query.h, request.query.e);
-            } else {
-                let j = apiJSON(0, { t: "no stream id" })
-                res.code(j.status).send(j.body);
-                return;
-            }
+            if (request.query.t && request.query.h && request.query.e &&
+                request.query.t.toString().length === 21 &&
+                request.query.h.toString().length === 64 &&
+                request.query.e.toString().length === 13) {
+                    let streamInfo = verifyStream(request.query.t, request.query.h, request.query.e);
+                    if (streamInfo.error) {
+                        reply.code(streamInfo.status).send(apiJSON(0, { t: streamInfo.error }).body);
+                        return;
+                    }
+                    if (request.query.p) {
+                        reply.code(200).send({ "status": "continue" });
+                        return;
+                    }
+                    stream(reply, streamInfo);
+                } else {
+                    let j = apiJSON(0, { t: "stream token, hmac, or expiry timestamp is missing." })
+                    reply.code(j.status).send(j.body)
+                }
         }
     })
 
