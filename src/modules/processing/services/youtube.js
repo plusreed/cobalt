@@ -1,6 +1,7 @@
 import { Innertube } from 'youtubei.js';
 import { maxVideoDuration } from '../../config.js';
 import { cleanString } from '../../sub/utils.js';
+import processingFailure from '../../prometheus/metrics/processingFailure.js';
 
 const yt = await Innertube.create();
 
@@ -31,13 +32,23 @@ export default async function(o) {
     try {
         info = await yt.getBasicInfo(o.id, 'ANDROID');
     } catch (e) {
+        processingFailure.labels('youtube', 'ErrorCantConnectToServiceAPI').inc();
         return { error: 'ErrorCantConnectToServiceAPI' };
     }
 
-    if (!info) return { error: 'ErrorCantConnectToServiceAPI' };
+    if (!info) {
+        processingFailure.labels('youtube', 'ErrorCantConnectToServiceAPI').inc();
+        return { error: 'ErrorCantConnectToServiceAPI' };
+    }
 
-    if (info.playability_status.status !== 'OK') return { error: 'ErrorYTUnavailable' };
-    if (info.basic_info.is_live) return { error: 'ErrorLiveVideo' };
+    if (info.playability_status.status !== 'OK') {
+        processingFailure.labels('youtube', 'ErrorYTUnavailable').inc();
+        return { error: 'ErrorYTUnavailable' };
+    }
+    if (info.basic_info.is_live) {
+        processingFailure.labels('youtube', 'ErrorLiveVideo').inc();
+        return { error: 'ErrorLiveVideo' };
+    }
 
     let bestQuality, hasAudio, adaptive_formats = info.streaming_data.adaptive_formats.filter(e => 
         e["mime_type"].includes(c[o.format].codec) || e["mime_type"].includes(c[o.format].aCodec)
@@ -47,8 +58,14 @@ export default async function(o) {
     hasAudio = adaptive_formats.find(i => i["has_audio"]);
 
     if (bestQuality) bestQuality = qual(bestQuality);
-    if (!bestQuality && !o.isAudioOnly || !hasAudio) return { error: 'ErrorYTTryOtherCodec' };
-    if (info.basic_info.duration > maxVideoDuration / 1000) return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    if (!bestQuality && !o.isAudioOnly || !hasAudio) {
+        processingFailure.labels('youtube', 'ErrorYTTryOtherCodec').inc();
+        return { error: 'ErrorYTTryOtherCodec' };
+    }
+    if (info.basic_info.duration > maxVideoDuration / 1000) {
+        processingFailure.labels('youtube', 'ErrorLengthLimit').inc();
+        return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    }
 
     let checkBestAudio = (i) => (i["has_audio"] && !i["has_video"]),
         audio = adaptive_formats.find(i => checkBestAudio(i) && !i["is_dubbed"]);
@@ -83,12 +100,13 @@ export default async function(o) {
         youtubeDubName: isDubbed ? o.dubLang : false
     }
 
-    if (filenameAttributes.title === "Video Not Available" && filenameAttributes.author === "YouTube Viewers")
+    if (filenameAttributes.title === "Video Not Available" && filenameAttributes.author === "YouTube Viewers") {
+        processingFailure.labels('youtube', 'ErrorCantConnectToServiceAPI').inc();
         return {
             error: 'ErrorCantConnectToServiceAPI',
             critical: true
         }
-
+    }
     if (hasAudio && o.isAudioOnly) return {
         type: "render",
         isAudioOnly: true,
@@ -130,5 +148,6 @@ export default async function(o) {
         }
     }
 
+    processingFailure.labels('youtube', 'ErrorYTTryOtherCodec').inc();
     return { error: 'ErrorYTTryOtherCodec' }
 }

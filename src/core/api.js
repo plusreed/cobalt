@@ -1,7 +1,7 @@
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { randomBytes } from "crypto";
-import { client as promClient, registry } from '../modules/prometheus/client.js';
+import { collectDefaultMetrics, registry } from '../modules/prometheus/client.js';
 
 const ipSalt = randomBytes(64).toString('hex');
 
@@ -20,11 +20,13 @@ export function runAPI(express, app, gitCommit, gitBranch, __dirname) {
         optionsSuccessStatus: 200
     } : {};
 
-    promClient.collectDefaultMetrics({
+    // TODO: prometheus should be optional if the instance admin doesn't want it
+    collectDefaultMetrics({
         register: registry,
         timeout: 5000,
-        gcDurationBuckets: [0.001, 0.01, 0.1, 2, 5] 
+        gcDurationBuckets: [0.001, 0.01, 0.1, 2, 5],
     });
+    registry.setDefaultLabels({ serviceName: process.env.apiName || "unknown" })
 
     const apiLimiter = rateLimit({
         windowMs: 60000,

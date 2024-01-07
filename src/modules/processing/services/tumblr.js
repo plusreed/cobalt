@@ -1,10 +1,12 @@
 import psl from "psl";
 import { genericUserAgent } from "../../config.js";
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 
 export default async function(obj) {
     let { subdomain } = psl.parse(obj.url.hostname);
 
     if (subdomain?.includes('.')) {
+        processingFailure.labels('tumblr', 'ErrorBrokenLink').inc();
         return { error: ['ErrorBrokenLink', 'tumblr'] }
     } else if (subdomain === 'www' || subdomain === 'at') {
         subdomain = undefined
@@ -12,9 +14,15 @@ export default async function(obj) {
 
     let html = await fetch(`https://${subdomain ?? obj.user}.tumblr.com/post/${obj.id}`, {
         headers: { "user-agent": genericUserAgent }
-    }).then((r) => { return r.text() }).catch(() => { return false });
+    }).then((r) => { return r.text() }).catch(() => {
+        processingFailure.labels('tumblr', 'ErrorCouldntFetch').inc();
+        return false
+    });
 
-    if (!html) return { error: 'ErrorCouldntFetch' };
+    if (!html) {
+        processingFailure.labels('tumblr', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     let r;
     if (html.includes('property="og:video" content="https://va.media.tumblr.com/')) {
@@ -29,7 +37,10 @@ export default async function(obj) {
             audioFilename: `tumblr_${obj.id}`,
             isAudioOnly: true
         }
-    } else r = { error: 'ErrorEmptyDownload' };
+    } else {
+        processingFailure.labels('tumblr', 'ErrorEmptyDownload').inc();
+        r = { error: 'ErrorEmptyDownload' };
+    }
 
     return r
 }

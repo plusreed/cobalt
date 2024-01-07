@@ -1,4 +1,5 @@
 import { genericUserAgent } from "../../config.js";
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 
 const userAgent = genericUserAgent.split(' Chrome/1')[0],
     config = {
@@ -35,7 +36,10 @@ export default async function(obj) {
             redirect: "manual",
             headers: { "user-agent": userAgent }
         }).then((r) => { return r.text() }).catch(() => { return false });
-        if (!html) return { error: 'ErrorCouldntFetch' };
+        if (!html) {
+            processingFailure.labels(obj.host, 'ErrorCouldntFetch').inc();
+            return { error: 'ErrorCouldntFetch' };
+        }
 
         if (html.slice(0, 17) === '<a href="https://' && html.includes('/video/')) {
             postId = html.split('/video/')[1].split('?')[0].replace("/", '')
@@ -43,7 +47,10 @@ export default async function(obj) {
             postId = html.split('/v/')[1].split('.html')[0].replace("/", '')
         }
     }
-    if (!postId) return { error: 'ErrorCantGetID' };
+    if (!postId) {
+        processingFailure.labels(obj.host, 'ErrorCantGetID').inc();
+        return { error: 'ErrorCantGetID' };
+    }
 
     let detail;
     detail = await fetch(config[obj.host]["api"].replace("{postId}", postId), {
@@ -51,7 +58,10 @@ export default async function(obj) {
     }).then((r) => { return r.json() }).catch(() => { return false });
 
     detail = selector(detail, obj.host, postId);
-    if (!detail) return { error: 'ErrorCouldntFetch' };
+    if (!detail) {
+        processingFailure.labels(obj.host, 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     let video, videoFilename, audioFilename, isMp3, audio, images, filenameBase = `${obj.host}_${postId}`;
     if (obj.host === "tiktok") {

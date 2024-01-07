@@ -1,5 +1,6 @@
 import { maxVideoDuration } from "../../config.js";
 import { cleanString } from '../../sub/utils.js';
+import processingFailure from '../../prometheus/metrics/processingFailure.js';
 
 const resolutionMatch = {
     "3840": "2160",
@@ -28,7 +29,10 @@ export default async function(obj) {
     if (!quality || obj.isAudioOnly) quality = "9000";
 
     let api = await fetch(`https://player.vimeo.com/video/${obj.id}/config`).then((r) => { return r.json() }).catch(() => { return false });
-    if (!api) return { error: 'ErrorCouldntFetch' };
+    if (!api) {
+        processingFailure.labels('vimeo', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     let downloadType = "dash";
     if (!obj.forceDash && JSON.stringify(api).includes('"progressive":[{')) downloadType = "progressive";
@@ -47,7 +51,10 @@ export default async function(obj) {
         bestQuality = qualityMatch[bestQuality] ? qualityMatch[bestQuality] : bestQuality;
         if (Number(quality) < Number(bestQuality)) best = all.find(i => i["quality"].split('p')[0] === quality);
 
-        if (!best) return { error: 'ErrorEmptyDownload' };
+        if (!best) {
+            processingFailure.labels('vimeo', 'ErrorEmptyDownload').inc();
+            return { error: 'ErrorEmptyDownload' };
+        }
         return {
             urls: best["url"],
             audioFilename: `vimeo_${obj.id}_audio`,
@@ -55,13 +62,26 @@ export default async function(obj) {
         }
     }
 
-    if (api.video.duration > maxVideoDuration / 1000) return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    if (api.video.duration > maxVideoDuration / 1000) {
+        processingFailure.labels('vimeo', 'ErrorLengthLimit').inc();
+        return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    };
 
     let masterJSONURL = api["request"]["files"]["dash"]["cdns"]["akfire_interconnect_quic"]["url"];
-    let masterJSON = await fetch(masterJSONURL).then((r) => { return r.json() }).catch(() => { return false });
+    let masterJSON = await fetch(masterJSONURL).then((r) => { return r.json() }).catch(() => {
+        processingFailure.labels('vimeo', 'ErrorCouldntFetch').inc();
+        return false
+    });
 
-    if (!masterJSON) return { error: 'ErrorCouldntFetch' };
-    if (!masterJSON.video) return { error: 'ErrorEmptyDownload' };
+    if (!masterJSON) {
+        processingFailure.labels('vimeo', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
+
+    if (!masterJSON.video) {
+        processingFailure.labels('vimeo', 'ErrorEmptyDownload').inc();
+        return { error: 'ErrorEmptyDownload' };
+    }
 
     let masterJSON_Video = masterJSON.video.sort((a, b) => Number(b.width) - Number(a.width)).filter(a => a['format'] === "mp42"),
         bestVideo = masterJSON_Video[0];

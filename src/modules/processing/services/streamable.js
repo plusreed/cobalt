@@ -1,6 +1,10 @@
+import processingFailure from "../../prometheus/metrics/processingFailure";
 export default async function(obj) {
     let video = await fetch(`https://api.streamable.com/videos/${obj.id}`).then((r) => { return r.status === 200 ? r.json() : false }).catch(() => { return false });
-    if (!video) return { error: 'ErrorEmptyDownload' };
+    if (!video) {
+        processingFailure.labels('streamable', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorEmptyDownload' };
+    }
 
     let best = video.files['mp4-mobile'];
     if (video.files.mp4 && (obj.isAudioOnly || obj.quality === "max" || obj.quality >= 720)) {
@@ -15,5 +19,7 @@ export default async function(obj) {
             title: video.title
         }
     }
+
+    processingFailure.labels('streamable', 'ErrorEmptyDownload').inc();
     return { error: 'ErrorEmptyDownload' }
 }

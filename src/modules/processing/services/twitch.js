@@ -1,5 +1,6 @@
 import { maxVideoDuration } from "../../config.js";
 import { cleanString } from '../../sub/utils.js';
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 
 const gqlURL = "https://gql.twitch.tv/gql";
 const clientIdHead = { "client-id": "kimne78kx3ncx6brgo4mv6wki5h1ko" };
@@ -30,12 +31,21 @@ export default async function (obj) {
         }`
         })
     }).then((r) => { return r.status === 200 ? r.json() : false; }).catch(() => { return false });
-    if (!req_metadata) return { error: 'ErrorCouldntFetch' };
+    if (!req_metadata) {
+        processingFailure.labels('twitch', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     let clipMetadata = req_metadata.data.clip;
 
-    if (clipMetadata.durationSeconds > maxVideoDuration / 1000) return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
-    if (!clipMetadata.videoQualities || !clipMetadata.broadcaster) return { error: 'ErrorEmptyDownload' };
+    if (clipMetadata.durationSeconds > maxVideoDuration / 1000) {
+        processingFailure.labels('twitch', 'ErrorLengthLimit').inc();
+        return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    }
+    if (!clipMetadata.videoQualities || !clipMetadata.broadcaster) {
+        processingFailure.labels('twitch', 'ErrorEmptyDownload').inc();
+        return { error: 'ErrorEmptyDownload' };
+    }
 
     let req_token = await fetch(gqlURL, {
         method: "POST",
@@ -56,7 +66,10 @@ export default async function (obj) {
         ])
     }).then((r) => { return r.status === 200 ? r.json() : false; }).catch(() => { return false });
 
-    if (!req_token) return { error: 'ErrorCouldntFetch' };
+    if (!req_token) {
+        processingFailure.labels('twitch', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     let formats = clipMetadata.videoQualities;
     let format = formats.find(f => f.quality === obj.quality) || formats[0];

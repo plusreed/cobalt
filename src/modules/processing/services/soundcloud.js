@@ -1,5 +1,6 @@
 import { maxVideoDuration } from "../../config.js";
 import { cleanString } from "../../sub/utils.js";
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 
 let cachedID = {};
 
@@ -36,7 +37,10 @@ async function findClientID() {
 
 export default async function(obj) {
     let clientId = await findClientID();
-    if (!clientId) return { error: 'ErrorSoundCloudNoClientId' };
+    if (!clientId) {
+        processingFailure.labels('soundcloud', 'ErrorSoundCloudNoClientId').inc();
+        return { error: 'ErrorSoundCloudNoClientId' };
+    }
 
     let link;
     if (obj.url.hostname === 'on.soundcloud.com' && obj.shortLink) {
@@ -51,14 +55,23 @@ export default async function(obj) {
         link = `https://soundcloud.com/${obj.author}/${obj.song}${obj.accessKey ? `/s-${obj.accessKey}` : ''}`
     }
 
-    if (!link) return { error: 'ErrorCouldntFetch' };
+    if (!link) {
+        processingFailure.labels('soundcloud', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     let json = await fetch(`https://api-v2.soundcloud.com/resolve?url=${link}&client_id=${clientId}`).then((r) => {
         return r.status === 200 ? r.json() : false
     }).catch(() => { return false });
-    if (!json) return { error: 'ErrorCouldntFetch' };
+    if (!json) {
+        processingFailure.labels('soundcloud', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
-    if (!json["media"]["transcodings"]) return { error: 'ErrorEmptyDownload' };
+    if (!json["media"]["transcodings"]) {
+        processingFailure.labels('soundcloud', 'ErrorEmptyDownload').inc();
+        return { error: 'ErrorEmptyDownload' };
+    }
 
     let isMp3,
         selectedStream = json.media.transcodings.filter(v => v.preset === "opus_0_0")
@@ -73,10 +86,16 @@ export default async function(obj) {
 
     if (fileUrl.substring(0, 54) !== "https://api-v2.soundcloud.com/media/soundcloud:tracks:") return { error: 'ErrorEmptyDownload' };
 
-    if (json.duration > maxVideoDuration) return { error: ['ErrorLengthAudioConvert', maxVideoDuration / 60000] };
+    if (json.duration > maxVideoDuration) {
+        processingFailure.labels('soundcloud', 'ErrorLengthAudioConvert').inc();
+        return { error: ['ErrorLengthAudioConvert', maxVideoDuration / 60000] };
+    }
 
     let file = await fetch(fileUrl).then(async (r) => { return (await r.json()).url }).catch(() => { return false });
-    if (!file) return { error: 'ErrorCouldntFetch' };
+    if (!file) {
+        processingFailure.labels('soundcloud', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     let fileMetadata = {
         title: cleanString(json.title.trim()),

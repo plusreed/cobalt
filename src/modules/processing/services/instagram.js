@@ -1,6 +1,7 @@
 import { createStream } from "../../stream/manage.js";
 import { genericUserAgent } from "../../config.js";
 import { getCookie, updateCookie } from "../cookie/manager.js";
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 
 const commonInstagramHeaders = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
@@ -52,7 +53,10 @@ async function getPost(id) {
 
     } catch {}
 
-    if (!data) return { error: 'ErrorCouldntFetch' };
+    if (!data) {
+        processingFailure.labels('instagram', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     const sidecar = data?.shortcode_media?.edge_sidecar_to_children;
     if (sidecar) {
@@ -88,6 +92,7 @@ async function getPost(id) {
         }
     }
 
+    processingFailure.labels('instagram', 'ErrorEmptyDownload').inc();
     return { error: 'ErrorEmptyDownload' }
 }
 
@@ -103,10 +108,16 @@ async function usernameToId(username, cookie) {
 
 async function getStory(username, id) {
     const cookie = getCookie('instagram');
-    if (!cookie) return { error: 'ErrorUnsupported' }
+    if (!cookie) {
+        processingFailure.labels('instagram', 'ErrorUnsupported').inc();
+        return { error: 'ErrorUnsupported' }
+    }
 
     const userId = await usernameToId(username, cookie);
-    if (!userId) return { error: 'ErrorEmptyDownload' }
+    if (!userId) { 
+        processingFailure.labels('instagram', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorEmptyDownload' }
+    }
 
     const url = new URL('https://www.instagram.com/api/v1/feed/reels_media/');
           url.searchParams.set('reel_ids', userId);
@@ -119,7 +130,10 @@ async function getStory(username, id) {
     } catch {}
 
     const item = media.items[media.media_ids.indexOf(id)];
-    if (!item) return { error: 'ErrorEmptyDownload' };
+    if (!item) {
+        processingFailure.labels('instagram', 'ErrorEmptyDownload').inc();
+        return { error: 'ErrorEmptyDownload' };
+    }
     
     if (item.video_versions) {
         const video = item.video_versions.reduce((a, b) => a.width * a.height < b.width * b.height ? b : a)
@@ -137,6 +151,7 @@ async function getStory(username, id) {
         }
     }
 
+    processingFailure.labels('instagram', 'ErrorEmptyDownload').inc();
     return { error: 'ErrorCouldntFetch' };
 }
 
@@ -145,5 +160,6 @@ export default function(obj) {
     if (postId) return getPost(postId);
     if (username && storyId) return getStory(username, storyId);
 
+    processingFailure.labels('instagram', 'ErrorUnsupported').inc();
     return { error: 'ErrorUnsupported' }
 }

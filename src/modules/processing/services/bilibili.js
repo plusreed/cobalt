@@ -1,15 +1,25 @@
 import { genericUserAgent, maxVideoDuration } from "../../config.js";
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 
 // TO-DO: quality picking, bilibili.tv support, and higher quality downloads (currently requires an account)
 export default async function(obj) {
     let html = await fetch(`https://bilibili.com/video/${obj.id}`, {
         headers: { "user-agent": genericUserAgent }
     }).then((r) => { return r.text() }).catch(() => { return false });
-    if (!html) return { error: 'ErrorCouldntFetch' };
-    if (!(html.includes('<script>window.__playinfo__=') && html.includes('"video_codecid"'))) return { error: 'ErrorEmptyDownload' };
+    if (!html) {
+        processingFailure.labels('bilibili', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
+    if (!(html.includes('<script>window.__playinfo__=') && html.includes('"video_codecid"'))) {
+        processingFailure.labels('bilibili', 'ErrorEmptyDownload').inc();
+        return { error: 'ErrorEmptyDownload' };
+    }
 
     let streamData = JSON.parse(html.split('<script>window.__playinfo__=')[1].split('</script>')[0]);
-    if (streamData.data.timelength > maxVideoDuration) return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    if (streamData.data.timelength > maxVideoDuration) {
+        processingFailure.labels('bilibili', 'ErrorLengthLimit').inc();
+        return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    }
 
     let video = streamData["data"]["dash"]["video"].filter(v => 
         !v["baseUrl"].includes("https://upos-sz-mirrorcosov.bilivideo.com/")

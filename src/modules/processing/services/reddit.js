@@ -1,5 +1,6 @@
 import { genericUserAgent, maxVideoDuration } from "../../config.js";
 import { getCookie, updateCookieValues } from "../cookie/manager.js";
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 
 async function getAccessToken() {
     /* "cookie" in cookiefile needs to contain:
@@ -56,14 +57,23 @@ export default async function(obj) {
     let data = await fetch(
         url, { headers: accessToken && { authorization: `Bearer ${accessToken}` } }
     ).then((r) => { return r.json() }).catch(() => { return false });
-    if (!data) return { error: 'ErrorCouldntFetch' };
+    if (!data) {
+        processingFailure.labels('reddit', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     data = data[0]["data"]["children"][0]["data"];
 
     if (data.url.endsWith('.gif')) return { typeId: 1, urls: data.url };
 
-    if (!("reddit_video" in data["secure_media"])) return { error: 'ErrorEmptyDownload' };
-    if (data["secure_media"]["reddit_video"]["duration"] * 1000 > maxVideoDuration) return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    if (!("reddit_video" in data["secure_media"])) {
+        processingFailure.labels('reddit', 'ErrorEmptyDownload').inc();
+        return { error: 'ErrorEmptyDownload' };
+    }
+    if (data["secure_media"]["reddit_video"]["duration"] * 1000 > maxVideoDuration) {
+        processingFailure.labels('reddit', 'ErrorLengthLimit').inc();
+        return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    }
 
     let audio = false,
         video = data["secure_media"]["reddit_video"]["fallback_url"].split('?')[0],

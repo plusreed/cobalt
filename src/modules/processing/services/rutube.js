@@ -1,19 +1,35 @@
 import HLS from 'hls-parser';
 import { maxVideoDuration } from "../../config.js";
 import { cleanString } from '../../sub/utils.js';
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 
 export default async function(obj) {
     let quality = obj.quality === "max" ? "9000" : obj.quality;
     let play = await fetch(`https://rutube.ru/api/play/options/${obj.id}/?no_404=true&referer&pver=v2`).then((r) => { return r.json() }).catch(() => { return false });
-    if (!play) return { error: 'ErrorCouldntFetch' };
+    if (!play) {
+        processingFailure.labels('rutube', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
-    if ("hls" in play.live_streams) return { error: 'ErrorLiveVideo' };
-    if (!play.video_balancer || play.detail) return { error: 'ErrorEmptyDownload' };
+    if ("hls" in play.live_streams) {
+        processingFailure.labels('rutube', 'ErrorLiveVideo').inc();
+        return { error: 'ErrorLiveVideo' };
+    }
+    if (!play.video_balancer || play.detail) {
+        processingFailure.labels('rutube', 'ErrorEmptyDownload').inc();
+        return { error: 'ErrorEmptyDownload' };
+    }
 
-    if (play.duration > maxVideoDuration) return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    if (play.duration > maxVideoDuration) {
+        processingFailure.labels('rutube', 'ErrorLengthLimit').inc();
+        return { error: ['ErrorLengthLimit', maxVideoDuration / 60000] };
+    }
     
     let m3u8 = await fetch(play.video_balancer.m3u8).then((r) => { return r.text() }).catch(() => { return false });
-    if (!m3u8) return { error: 'ErrorCouldntFetch' };
+    if (!m3u8) {
+        processingFailure.labels('rutube', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     m3u8 = HLS.parse(m3u8).variants.sort((a, b) => Number(b.bandwidth) - Number(a.bandwidth));
 

@@ -1,5 +1,6 @@
 import { genericUserAgent } from "../../config.js";
 import { createStream } from "../../stream/manage.js";
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 
 const graphqlURL = 'https://twitter.com/i/api/graphql/5GOHgZe-8U2j5sVHQzEm9A/TweetResultByRestId';
 const tokenURL = 'https://api.twitter.com/1.1/guest/activate.json';
@@ -74,7 +75,10 @@ const requestTweet = (tweetId, token) => {
 
 export default async function({ id, index }) {
     let guestToken = await getGuestToken();
-    if (!guestToken) return { error: 'ErrorCouldntFetch' };
+    if (!guestToken) {
+        processingFailure.labels('twitter', 'ErrorCouldntFetch').inc();
+        return { error: 'ErrorCouldntFetch' };
+    }
 
     let tweet = await requestTweet(id, guestToken);
 
@@ -87,6 +91,7 @@ export default async function({ id, index }) {
 
     // {"data":{"tweetResult":{"result":{"__typename":"TweetUnavailable","reason":"Protected"}}}}
     if (tweet?.data?.tweetResult?.result?.__typename !== "Tweet") {
+        processingFailure.labels('twitter', 'ErrorTweetUnavailable').inc();
         return { error: 'ErrorTweetUnavailable' }
     }
 
@@ -104,6 +109,7 @@ export default async function({ id, index }) {
     switch (media?.length) {
         case undefined:
         case 0:
+            processingFailure.labels('twitter', 'ErrorNoVideosInTweet').inc();
             return { error: 'ErrorNoVideosInTweet' };
         case 1:
             return {
