@@ -1,4 +1,4 @@
-import processingFailure from "../../prometheus/metrics/processingFailure";
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 export default async function(obj) {
     let video = await fetch(`https://api.streamable.com/videos/${obj.id}`).then((r) => { return r.status === 200 ? r.json() : false }).catch(() => { return false });
     if (!video) {

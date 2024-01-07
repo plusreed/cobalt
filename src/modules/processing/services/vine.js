@@ -1,4 +1,4 @@
-import processingFailure from "../../prometheus/metrics/processingFailure";
+import processingFailure from "../../prometheus/metrics/processingFailure.js";
 
 export default async function(obj) {
     let post = await fetch(`https://archive.vine.co/posts/${obj.id}.json`).then((r) => { return r.json() }).catch(() => {
