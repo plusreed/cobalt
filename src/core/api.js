@@ -1,6 +1,7 @@
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { randomBytes } from "crypto";
+import { client as promClient, registry } from '../modules/prometheus/client.js';
 
 const ipSalt = randomBytes(64).toString('hex');
 
@@ -18,6 +19,12 @@ export function runAPI(express, app, gitCommit, gitBranch, __dirname) {
         origin: process.env.webURL,
         optionsSuccessStatus: 200
     } : {};
+
+    promClient.collectDefaultMetrics({
+        register: registry,
+        timeout: 5000,
+        gcDurationBuckets: [0.001, 0.01, 0.1, 2, 5] 
+    });
 
     const apiLimiter = rateLimit({
         windowMs: 60000,
@@ -109,6 +116,17 @@ export function runAPI(express, app, gitCommit, gitBranch, __dirname) {
             return res.status(j.status).json(j.body);
         } catch (e) {
             return res.destroy();
+        }
+    });
+
+    // TODO: figure out if this truly needs to be async
+    // it's out of place compared to the rest of the api
+    app.get('/api/metrics', async (req, res) => {
+        try {
+            res.set('Content-Type', registry.contentType);
+            res.end(await registry.metrics());
+        } catch (ex) {
+            res.status(500).end(ex); // TODO: needs to use apiJSON in some shape or form
         }
     });
 
